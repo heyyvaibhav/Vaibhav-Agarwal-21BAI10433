@@ -23,15 +23,68 @@ class Game:
                 self.board[4][idx] = f"B-{char}"
 
     def valid_move(self, player_id, char, move):
-        # Implement the movement logic validation here based on the character and move
-        return True
+        player_prefix = 'A-' if player_id == 0 else 'B-'
+        # Find the character's current position
+        for i in range(5):
+            for j in range(5):
+                if self.board[i][j] == player_prefix + char:
+                    current_pos = (i, j)
+                    break
+        else:
+            return False  # Character not found
+
+        x, y = current_pos
+        dx, dy = 0, 0
+
+        if move == 'L': dy = -1
+        elif move == 'R': dy = 1
+        elif move == 'F': dx = -1 if player_id == 0 else 1
+        elif move == 'B': dx = 1 if player_id == 0 else -1
+        elif move == 'FL': dx, dy = (-1 if player_id == 0 else 1), -1
+        elif move == 'FR': dx, dy = (-1 if player_id == 0 else 1), 1
+        elif move == 'BL': dx, dy = (1 if player_id == 0 else -1), -1
+        elif move == 'BR': dx, dy = (1 if player_id == 0 else -1), 1
+        else: return False
+
+        new_x, new_y = x + dx, y + dy
+        if 0 <= new_x < 5 and 0 <= new_y < 5:
+            if self.board[new_x][new_y] == '' or self.board[new_x][new_y][0] != player_prefix[0]:
+                return True
+        return False
 
     def move_character(self, player_id, char, move):
-        # Update the board state based on the move
-        pass
+        player_prefix = 'A-' if player_id == 0 else 'B-'
+        # Find the character's current position
+        for i in range(5):
+            for j in range(5):
+                if self.board[i][j] == player_prefix + char:
+                    current_pos = (i, j)
+                    break
+
+        x, y = current_pos
+        dx, dy = 0, 0
+
+        if move == 'L': dy = -1
+        elif move == 'R': dy = 1
+        elif move == 'F': dx = -1 if player_id == 0 else 1
+        elif move == 'B': dx = 1 if player_id == 0 else -1
+        elif move == 'FL': dx, dy = (-1 if player_id == 0 else 1), -1
+        elif move == 'FR': dx, dy = (-1 if player_id == 0 else 1), 1
+        elif move == 'BL': dx, dy = (1 if player_id == 0 else -1), -1
+        elif move == 'BR': dx, dy = (1 if player_id == 0 else -1), 1
+
+        new_x, new_y = x + dx, y + dy
+        if self.valid_move(player_id, char, move):
+            self.board[new_x][new_y] = player_prefix + char
+            self.board[x][y] = ''
 
     def check_game_over(self):
-        # Implement game over check
+        # Check if either player has no remaining characters
+        player_a_has_chars = any('A-' in cell for row in self.board for cell in row)
+        player_b_has_chars = any('B-' in cell for row in self.board for cell in row)
+
+        if not player_a_has_chars or not player_b_has_chars:
+            return True
         return False
 
     def get_game_state(self):
@@ -66,7 +119,7 @@ async def handle_client(websocket, path, game):
 
 async def main():
     game = Game()
-    async with websockets.serve(lambda ws, path: handle_client(ws, path, game), "localhost", 4000):
+    async with websockets.serve(lambda ws, path: handle_client(ws, path, game), "localhost", 6789):
         await asyncio.Future()  # Run forever
 
 if __name__ == "__main__":
