@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess-like Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            grid-template-rows: repeat(5, 50px);
+            gap: 5px;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chess-like Game</h1>
+    <div id="board" class="board"></div>
+    <p id="message"></p>
+    <script>
+        const ws = new WebSocket("https://localhost:4000");
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === "GAME_INIT") {
+                alert(`Player ${data.player_id} joined`);
+            } else if (data.type === "STATE_UPDATE") {
+                renderBoard(data.board);
+            } else if (data.type === "INVALID_MOVE") {
+                document.getElementById('message').textContent = data.message;
+            } else if (data.type === "GAME_OVER") {
+                alert(`Game Over! Player ${data.winner} wins!`);
+            }
+        };
+
+        function renderBoard(board) {
+            const boardDiv = document.getElementById('board');
+            boardDiv.innerHTML = '';
+            for (let row of board) {
+                for (let cell of row) {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'cell';
+                    cellDiv.textContent = cell;
+                    boardDiv.appendChild(cellDiv);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
