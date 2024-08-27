@@ -23,6 +23,10 @@
             justify-content: center;
             background-color: #f0f0f0;
         }
+        .cell.highlight {
+            background-color: #c0ffc0;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -30,12 +34,16 @@
     <div id="board" class="board"></div>
     <p id="message"></p>
     <script>
-        const ws = new WebSocket("https://localhost:4000");
+        const ws = new WebSocket("ws://localhost:6789");
+        let playerId = null;
+        let selectedChar = null;
+        let selectedCharPos = null;
 
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
             if (data.type === "GAME_INIT") {
-                alert(`Player ${data.player_id} joined`);
+                playerId = data.player_id;
+                alert(`Player ${playerId} joined`);
             } else if (data.type === "STATE_UPDATE") {
                 renderBoard(data.board);
             } else if (data.type === "INVALID_MOVE") {
@@ -48,14 +56,82 @@
         function renderBoard(board) {
             const boardDiv = document.getElementById('board');
             boardDiv.innerHTML = '';
-            for (let row of board) {
-                for (let cell of row) {
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
                     const cellDiv = document.createElement('div');
                     cellDiv.className = 'cell';
-                    cellDiv.textContent = cell;
+                    cellDiv.textContent = board[i][j];
+                    if (board[i][j].startsWith(playerId === 0 ? 'A' : 'B')) {
+                        cellDiv.addEventListener('click', () => selectCharacter(i, j, board[i][j]));
+                    }
                     boardDiv.appendChild(cellDiv);
                 }
             }
+        }
+
+        function selectCharacter(i, j, character) {
+            selectedChar = character.split('-')[1];
+            selectedCharPos = [i, j];
+            highlightMoves(i, j);
+        }
+
+        function highlightMoves(x, y) {
+            const boardDiv = document.getElementById('board');
+            const cells = boardDiv.querySelectorAll('.cell');
+            const possibleMoves = getValidMoves(selectedChar, x, y);
+
+            for (let [newX, newY] of possibleMoves) {
+                const cellIndex = newX * 5 + newY;
+                cells[cellIndex].classList.add('highlight');
+                cells[cellIndex].addEventListener('click', () => moveCharacter(newX, newY));
+            }
+        }
+
+        function getValidMoves(char, x, y) {
+            const moves = [];
+            const directions = {
+                'Pawn': ['F'],
+                'Hero1': ['L', 'R', 'F', 'B'],
+                'Hero2': ['FL', 'FR', 'BL', 'BR']
+            };
+            const dirMap = {
+                'L': [0, -1], 'R': [0, 1], 'F': [-1, 0], 'B': [1, 0],
+                'FL': [-1, -1], 'FR': [-1, 1], 'BL': [1, -1], 'BR': [1, 1]
+            };
+
+            const moveTypes = directions[char];
+            for (let move of moveTypes) {
+                const [dx, dy] = dirMap[move];
+                const newX = x + dx;
+                const newY = y + dy;
+                if (newX >= 0 && newX < 5 && newY >= 0 && newY < 5) {
+                    moves.push([newX, newY]);
+                }
+            }
+            return moves;
+        }
+
+        function moveCharacter(newX, newY) {
+            const [oldX, oldY] = selectedCharPos;
+            const dx = newX - oldX;
+            const dy = newY - oldY;
+
+            const move = dx === 0 && dy === -1 ? 'L' :
+                         dx === 0 && dy === 1 ? 'R' :
+                         dx === -1 && dy === 0 ? 'F' :
+                         dx === 1 && dy === 0 ? 'B' :
+                         dx === -1 && dy === -1 ? 'FL' :
+                         dx === -1 && dy === 1 ? 'FR' :
+                         dx === 1 && dy === -1 ? 'BL' :
+                         dx === 1 && dy === 1 ? 'BR' : '';
+
+            if (move) {
+                ws.send(JSON.stringify({ type: 'MOVE', char: selectedChar, move }));
+            }
+
+            // Clear selection
+            selectedChar = null;
+            selectedCharPos = null;
         }
     </script>
 </body>
